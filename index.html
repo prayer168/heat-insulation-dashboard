@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>如何保溫與散熱 — 互動學習 Dashboard</title>
+<style>
+  :root {
+    --hot: #ff6b35;
+    --warm: #ffa552;
+    --cool: #4ecdc4;
+    --cold: #45b7d1;
+    --bg: #0f1923;
+    --card: #1a2535;
+    --card2: #1e2d42;
+    --text: #e8f4f8;
+    --accent: #00d4ff;
+    --green: #2ecc71;
+    --red: #e74c3c;
+    --yellow: #f1c40f;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow-x: hidden;
+    font-size: 17px;
+    line-height: 1.7;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    position: relative;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    overflow: hidden;
+    background: radial-gradient(ellipse at 30% 50%, #1a0a00 0%, #0f1923 60%);
+  }
+  .hero-title {
+    font-size: clamp(2.2rem, 6vw, 4.5rem);
+    font-weight: 900;
+    background: linear-gradient(135deg, #ff6b35, #ffd700, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    margin-bottom: 1rem;
+    animation: fadeSlideDown .9s ease both;
+  }
+  .hero-sub {
+    font-size: 1.25rem;
+    color: #8ab4c9;
+    margin-bottom: 2.5rem;
+    animation: fadeSlideDown 1.1s ease both;
+  }
+  .hero-scroll {
+    animation: fadeSlideDown 1.4s ease both, bounce 2s infinite 1.5s;
+    font-size: 2.5rem;
+    cursor: pointer;
+    color: var(--accent);
+  }
+
+  /* floating heat particles */
+  .particle {
+    position: absolute;
+    border-radius: 50%;
+    opacity: 0;
+    animation: floatUp var(--dur) ease-in infinite var(--delay);
+  }
+
+  /* ── SECTIONS ── */
+  section {
+    padding: 80px 5vw;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .section-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: .4rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  .section-title span { font-size: 2.4rem; }
+  .section-desc {
+    color: #8ab4c9;
+    margin-bottom: 2.5rem;
+    font-size: 1.05rem;
+  }
+
+  /* ── CARDS GRID ── */
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 24px; }
+  .card {
+    background: var(--card);
+    border-radius: 20px;
+    padding: 32px;
+    border: 1px solid rgba(255,255,255,.07);
+    transition: transform .3s, box-shadow .3s;
+    position: relative;
+    overflow: hidden;
+  }
+  .card:hover { transform: translateY(-6px); box-shadow: 0 20px 60px rgba(0,0,0,.4); }
+  .card-icon { font-size: 3.5rem; margin-bottom: 1rem; }
+  .card h3 { font-size: 1.4rem; margin-bottom: .7rem; }
+  .card p { color: #a0bec9; }
+
+  /* ── CONDUCTION ANIMATION ── */
+  .conduction-bar {
+    width: 100%;
+    height: 60px;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #ff2d00 0%, #ff6b35 20%, #ffa552 35%, #334 50%, #334 100%);
+    background-size: 200% 100%;
+    background-position: 100% 0;
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+    cursor: pointer;
+    border: 2px solid rgba(255,255,255,.1);
+    transition: background-position 3s ease;
+  }
+  .conduction-bar.active { background-position: 0% 0; }
+  .conduction-bar::after {
+    content: '點我加熱 →';
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1.1rem;
+    color: #fff;
+    text-shadow: 0 1px 4px #000;
+  }
+  .conduction-bar.active::after { content: '熱能正在傳導中…'; }
+
+  /* ── CONVECTION ── */
+  .convection-box {
+    width: 100%;
+    height: 220px;
+    background: linear-gradient(180deg, #0a1a3a 0%, #0d2244 50%, #1a0a00 100%);
+    border-radius: 16px;
+    border: 2px solid rgba(255,255,255,.1);
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .heat-source {
+    position: absolute;
+    bottom: 0; left: 50%;
+    transform: translateX(-50%);
+    width: 80px; height: 16px;
+    background: linear-gradient(90deg, #ff4500, #ffd700, #ff4500);
+    border-radius: 8px 8px 0 0;
+    box-shadow: 0 0 30px #ff4500;
+  }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,120,0,.8), rgba(255,60,0,.3));
+    animation: convect var(--t) ease-in-out infinite var(--d);
+    width: var(--s); height: var(--s);
+  }
+
+  /* ── RADIATION ── */
+  .radiation-scene {
+    width: 100%;
+    height: 200px;
+    background: #050d1a;
+    border-radius: 16px;
+    border: 2px solid rgba(255,255,255,.1);
+    margin: 1.5rem 0;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+  }
+  .sun {
+    width: 70px; height: 70px;
+    background: radial-gradient(circle, #fff9a0, #ffd700 40%, #ff8c00);
+    border-radius: 50%;
+    box-shadow: 0 0 40px #ffd700, 0 0 80px rgba(255,200,0,.4);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  .ray {
+    position: absolute;
+    height: 2px;
+    background: linear-gradient(90deg, rgba(255,200,0,.8), transparent);
+    animation: rayShoot var(--t) linear infinite var(--d);
+    width: 0;
+  }
+  .earth {
+    width: 60px; height: 60px;
+    background: radial-gradient(circle at 35% 35%, #4fc3f7, #1565c0 50%, #0d3b66);
+    border-radius: 50%;
+    box-shadow: 0 0 20px rgba(79,195,247,.4);
+  }
+
+  /* ── THERMOS ── */
+  .thermos-scene {
+    display: flex;
+    gap: 40px;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+  .thermos-wrap { text-align: center; }
+  .thermos {
+    width: 90px;
+    height: 200px;
+    margin: 0 auto 1rem;
+    position: relative;
+    border-radius: 12px 12px 16px 16px;
+    overflow: hidden;
+    border: 3px solid rgba(255,255,255,.2);
+    background: linear-gradient(180deg, #2a3a4a 0%, #1a2535 100%);
+    box-shadow: 4px 0 0 rgba(255,255,255,.1) inset, -4px 0 0 rgba(0,0,0,.3) inset;
+  }
+  .thermos-liquid {
+    position: absolute;
+    bottom: 0; left: 8px; right: 8px;
+    height: 65%;
+    border-radius: 6px 6px 10px 10px;
+    transition: background 3s;
+  }
+  .thermos-liquid.hot {
+    background: linear-gradient(180deg, #ff8c42, #ff4500);
+    box-shadow: 0 -8px 20px rgba(255,100,0,.5);
+    animation: steamRise 1.5s ease-in-out infinite;
+  }
+  .thermos-liquid.cold {
+    background: linear-gradient(180deg, #74d7f0, #0099cc);
+    box-shadow: 0 -8px 20px rgba(100,200,255,.3);
+  }
+  .vacuum-layer {
+    position: absolute;
+    inset: 0;
+    border: 6px solid transparent;
+    border-image: repeating-linear-gradient(45deg, rgba(255,255,255,.04) 0, rgba(255,255,255,.04) 2px, transparent 2px, transparent 6px) 6;
+  }
+  .steam {
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    width: 4px;
+    background: rgba(255,255,255,.5);
+    border-radius: 2px;
+    transform: translateX(-50%);
+    animation: steamPuff 1.5s ease-in-out infinite;
+    height: 20px;
+  }
+  .thermos-label { font-weight: 700; font-size: 1.1rem; margin-bottom: .3rem; }
+  .thermos-temp {
+    font-size: 2rem;
+    font-weight: 900;
+    color: var(--hot);
+    transition: color 3s;
+  }
+
+  /* ── COLOR EXPERIMENT ── */
+  .color-exp {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 2rem 0;
+  }
+  .color-cup {
+    width: 120px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform .2s;
+  }
+  .color-cup:hover { transform: scale(1.05); }
+  .cup-body {
+    width: 80px;
+    height: 120px;
+    margin: 0 auto 10px;
+    border-radius: 6px 6px 14px 14px;
+    border: 3px solid rgba(255,255,255,.2);
+    position: relative;
+    overflow: hidden;
+    transition: box-shadow .5s;
+  }
+  .cup-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 70%;
+    background: linear-gradient(180deg, #ffa030, #cc6600);
+    transition: background 2s;
+  }
+  .cup-thermometer {
+    position: absolute;
+    right: 10px; bottom: 5px;
+    width: 8px; height: 70px;
+    background: rgba(255,255,255,.3);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .therm-fill {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    background: #ff3300;
+    transition: height 2s ease;
+    border-radius: 4px;
+  }
+  .cup-temp-label { font-size: 1.5rem; font-weight: 900; transition: color .5s; }
+  .cup-name { font-size: .9rem; color: #8ab4c9; margin-top: .3rem; }
+
+  /* ── SURFACE AREA ── */
+  .surface-demo {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-end;
+    margin: 2rem 0;
+  }
+  .surface-item { text-align: center; cursor: pointer; }
+  .surface-block {
+    background: linear-gradient(135deg, #ff6b35, #ff8c42);
+    border-radius: 8px;
+    margin: 0 auto 12px;
+    position: relative;
+    box-shadow: 0 8px 24px rgba(255,100,0,.3);
+    transition: box-shadow .3s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-weight: 700;
+  }
+  .surface-item .cool-rate {
+    font-size: 1rem;
+    color: var(--accent);
+    font-weight: 700;
+    margin-top: 6px;
+  }
+  .surface-item p { color: #8ab4c9; font-size: .9rem; }
+
+  /* ── PROGRESS BAR TEMP ── */
+  .temp-bar-wrap { margin: 1.5rem 0; }
+  .temp-bar-label { display: flex; justify-content: space-between; margin-bottom: .4rem; font-size: .95rem; color: #8ab4c9; }
+  .temp-bar-outer { height: 22px; background: #0d1a2a; border-radius: 12px; overflow: hidden; }
+  .temp-bar-inner {
+    height: 100%;
+    border-radius: 12px;
+    background: linear-gradient(90deg, #00d4ff, #ff6b35);
+    transition: width 1.5s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ── QUIZ ── */
+  .quiz-section {
+    background: var(--card2);
+    border-radius: 24px;
+    padding: 48px 40px;
+    margin: 60px auto;
+    max-width: 860px;
+    border: 1px solid rgba(255,255,255,.08);
+  }
+  .quiz-title {
+    font-size: 2rem;
+    font-weight: 800;
+    margin-bottom: .4rem;
+    background: linear-gradient(135deg, #ffd700, #ff6b35);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .quiz-desc { color: #8ab4c9; margin-bottom: 2.5rem; }
+  .q-block {
+    background: var(--card);
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(255,255,255,.06);
+    transition: border-color .3s;
+  }
+  .q-block.answered-correct { border-color: var(--green); }
+  .q-block.answered-wrong   { border-color: var(--red); }
+  .q-num { font-size: .85rem; color: var(--accent); font-weight: 700; margin-bottom: .5rem; letter-spacing: .05em; }
+  .q-text { font-size: 1.1rem; font-weight: 600; margin-bottom: 1rem; }
+  .tf-btns { display: flex; gap: 12px; flex-wrap: wrap; }
+  .tf-btn, .mc-btn {
+    padding: 10px 28px;
+    border-radius: 10px;
+    border: 2px solid rgba(255,255,255,.15);
+    background: rgba(255,255,255,.05);
+    color: var(--text);
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all .2s;
+    font-family: inherit;
+  }
+  .tf-btn:hover, .mc-btn:hover {
+    border-color: var(--accent);
+    background: rgba(0,212,255,.1);
+    transform: translateY(-2px);
+  }
+  .tf-btn.correct, .mc-btn.correct { background: rgba(46,204,113,.2); border-color: var(--green); color: var(--green); }
+  .tf-btn.wrong,   .mc-btn.wrong   { background: rgba(231,76,60,.2);  border-color: var(--red);   color: var(--red); }
+  .tf-btn.disabled, .mc-btn.disabled { pointer-events: none; opacity: .5; }
+  .mc-opts { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .q-feedback {
+    margin-top: 10px;
+    font-size: .95rem;
+    min-height: 1.2em;
+    font-weight: 600;
+  }
+  .q-feedback.ok  { color: var(--green); }
+  .q-feedback.bad { color: var(--red); }
+
+  /* ── SCORE ── */
+  .score-btn {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, #ff6b35, #ffd700);
+    border: none;
+    border-radius: 14px;
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f1923;
+    cursor: pointer;
+    margin-top: 2rem;
+    transition: transform .2s, box-shadow .2s;
+    font-family: inherit;
+  }
+  .score-btn:hover { transform: translateY(-3px); box-shadow: 0 12px 40px rgba(255,165,0,.4); }
+  .score-result {
+    margin-top: 1.5rem;
+    text-align: center;
+    font-size: 1.5rem;
+    font-weight: 800;
+    display: none;
+  }
+  .score-emoji { font-size: 4rem; display: block; margin-bottom: .5rem; }
+
+  /* ── FOOTER / DIVIDER ── */
+  .divider {
+    width: 80px; height: 4px;
+    background: linear-gradient(90deg, var(--hot), var(--accent));
+    border-radius: 2px;
+    margin: .8rem 0 2rem;
+  }
+  footer {
+    text-align: center;
+    padding: 40px;
+    color: #4a6a7a;
+    font-size: .9rem;
+  }
+
+  /* ── KEYFRAMES ── */
+  @keyframes fadeSlideDown {
+    from { opacity: 0; transform: translateY(-30px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes bounce {
+    0%,100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px); }
+  }
+  @keyframes floatUp {
+    0%   { opacity: 0; transform: translateY(0) scale(1); }
+    20%  { opacity: .8; }
+    100% { opacity: 0; transform: translateY(-120px) scale(.3); }
+  }
+  @keyframes pulse {
+    0%,100% { box-shadow: 0 0 40px #ffd700, 0 0 80px rgba(255,200,0,.4); }
+    50%      { box-shadow: 0 0 60px #ffd700, 0 0 120px rgba(255,200,0,.6); }
+  }
+  @keyframes convect {
+    0%   { bottom: 16px; opacity: 0; transform: translateX(0) scale(1); }
+    20%  { opacity: 1; }
+    50%  { transform: translateX(var(--dx)) scale(1.2); }
+    80%  { opacity: .6; }
+    100% { bottom: 180px; opacity: 0; transform: translateX(var(--dx2)) scale(.6); }
+  }
+  @keyframes rayShoot {
+    0%   { width: 0; opacity: 1; }
+    70%  { width: 200px; opacity: .8; }
+    100% { width: 220px; opacity: 0; }
+  }
+  @keyframes steamRise {
+    0%,100% { box-shadow: 0 -8px 20px rgba(255,100,0,.5); }
+    50%      { box-shadow: 0 -16px 40px rgba(255,100,0,.8); }
+  }
+  @keyframes steamPuff {
+    0%   { opacity: 0; transform: translateX(-50%) translateY(0) scaleX(1); }
+    30%  { opacity: .7; }
+    100% { opacity: 0; transform: translateX(-50%) translateY(-35px) scaleX(2.5); }
+  }
+  @keyframes shimmer {
+    0%   { left: -100%; }
+    100% { left: 200%; }
+  }
+  @keyframes heatGlow {
+    0%,100% { filter: brightness(1); }
+    50%      { filter: brightness(1.3) saturate(1.5); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ HERO ═══════════════════════════════════ -->
+<div class="hero" id="hero">
+  <h1 class="hero-title">如何保溫與散熱</h1>
+  <p class="hero-sub">探索熱能的奧秘 — 互動科學學習 Dashboard</p>
+  <div class="hero-scroll" onclick="document.getElementById('transfer').scrollIntoView({behavior:'smooth'})">↓</div>
+</div>
+
+<script>
+// Generate floating particles in hero
+(function(){
+  const hero = document.getElementById('hero');
+  const colors = ['#ff6b35','#ffa552','#ffd700','#ff2d00','#00d4ff'];
+  for(let i=0;i<60;i++){
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const s = Math.random()*14+4;
+    p.style.cssText = `
+      width:${s}px;height:${s}px;
+      left:${Math.random()*100}%;
+      top:${40+Math.random()*60}%;
+      background:${colors[Math.floor(Math.random()*colors.length)]};
+      --dur:${2+Math.random()*4}s;
+      --delay:${Math.random()*5}s;
+      box-shadow:0 0 ${s}px ${colors[Math.floor(Math.random()*colors.length)]};
+    `;
+    hero.appendChild(p);
+  }
+})();
+</script>
+
+<!-- ═══════════════════════════════ 熱的傳遞方式 ═══════════════════════════════ -->
+<section id="transfer">
+  <div class="section-title"><span>🌡️</span> 熱的傳遞方式</div>
+  <div class="divider"></div>
+  <p class="section-desc">熱能可以透過三種方式傳播：傳導、對流、輻射。點擊下方各種動畫互動體驗！</p>
+
+  <div class="cards">
+
+    <!-- 傳導 -->
+    <div class="card">
+      <div class="card-icon">🔩</div>
+      <h3>熱傳導</h3>
+      <p>熱能透過物質中粒子的碰撞傳遞，固體（尤其是金屬）傳導最快。</p>
+      <div class="conduction-bar" id="condBar" onclick="startConduction()"></div>
+      <div class="temp-bar-wrap">
+        <div class="temp-bar-label"><span>冷端 ❄️</span><span>🔥 熱端</span></div>
+        <div class="temp-bar-outer">
+          <div class="temp-bar-inner" id="condBar2" style="width:20%"></div>
+        </div>
+      </div>
+      <p id="condText" style="color:#8ab4c9;margin-top:.7rem;font-size:.95rem;">點擊棒子開始加熱，觀察熱能如何傳導！</p>
+    </div>
+
+    <!-- 對流 -->
+    <div class="card">
+      <div class="card-icon">🌊</div>
+      <h3>熱對流</h3>
+      <p>熱流體因密度較小而上升，冷流體下降，形成循環。水與空氣都能對流。</p>
+      <div class="convection-box" id="convBox">
+        <div class="heat-source"></div>
+      </div>
+      <button class="tf-btn" onclick="startConvection()" style="margin-top:.5rem">▶ 啟動對流</button>
+    </div>
+
+    <!-- 輻射 -->
+    <div class="card">
+      <div class="card-icon">☀️</div>
+      <h3>熱輻射</h3>
+      <p>熱能以電磁波形式傳遞，不需要任何介質，太陽的熱量就是這樣傳到地球的。</p>
+      <div class="radiation-scene" id="radScene">
+        <div class="sun" id="sun"></div>
+        <div class="earth"></div>
+      </div>
+      <button class="tf-btn" onclick="startRadiation()" style="margin-top:.5rem">☀️ 發射熱輻射</button>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ 保溫原理 ═══════════════════════════════════ -->
+<section id="insulate">
+  <div class="section-title"><span>🧊</span> 保溫的秘密</div>
+  <div class="divider"></div>
+  <p class="section-desc">良好的保溫能減緩熱能散失。點擊保溫瓶開關，觀察溫度變化！</p>
+
+  <div class="thermos-scene">
+    <!-- 一般杯子 -->
+    <div class="thermos-wrap">
+      <div class="thermos" id="cup1" onclick="toggleCup(1)" style="cursor:pointer;">
+        <div class="thermos-liquid hot" id="liquid1"></div>
+        <div class="steam" style="left:30%"></div>
+        <div class="steam" style="left:55%;animation-delay:.5s"></div>
+      </div>
+      <div class="thermos-label">一般玻璃杯</div>
+      <div class="cup-temp-label" id="temp1" style="color:var(--hot)">85°C</div>
+      <p style="color:#8ab4c9;font-size:.85rem;margin-top:.3rem">點擊開始冷卻</p>
+    </div>
+
+    <!-- 保溫瓶 -->
+    <div class="thermos-wrap">
+      <div class="thermos" id="cup2" onclick="toggleCup(2)" style="cursor:pointer;border-color:rgba(0,212,255,.4);">
+        <div class="thermos-liquid hot" id="liquid2"></div>
+        <div class="vacuum-layer"></div>
+        <div class="steam" style="left:30%"></div>
+      </div>
+      <div class="thermos-label" style="color:var(--accent)">真空保溫瓶</div>
+      <div class="cup-temp-label" id="temp2" style="color:var(--hot)">85°C</div>
+      <p style="color:#8ab4c9;font-size:.85rem;margin-top:.3rem">點擊開始計時</p>
+    </div>
+
+    <!-- 說明 -->
+    <div style="max-width:280px;padding-top:20px;">
+      <h3 style="color:var(--accent);margin-bottom:1rem">為什麼保溫瓶能保溫？</h3>
+      <ul style="color:#a0bec9;line-height:2;list-style:none;padding:0;">
+        <li>🔸 <b>雙層不鏽鋼</b> — 阻隔傳導</li>
+        <li>🔸 <b>真空夾層</b> — 阻止對流</li>
+        <li>🔸 <b>鏡面反射層</b> — 減少輻射散熱</li>
+        <li>🔸 <b>密封瓶蓋</b> — 防止蒸發散熱</li>
+      </ul>
+      <div id="thermos-msg" style="margin-top:1rem;color:#ffd700;font-weight:700;min-height:2rem;"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════ 顏色與吸熱 ═══════════════════════════════ -->
+<section id="color-exp">
+  <div class="section-title"><span>🎨</span> 顏色與吸熱 / 散熱</div>
+  <div class="divider"></div>
+  <p class="section-desc">深色吸收輻射較多，淺色反射輻射較多。點擊「日曬實驗」觀察溫度差異！</p>
+
+  <div class="color-exp">
+    <div class="color-cup" onclick="sunExperiment()">
+      <div class="cup-body" id="cup-black" style="background:#111;">
+        <div class="cup-fill" id="fill-black"></div>
+        <div class="cup-thermometer"><div class="therm-fill" id="therm-black" style="height:55%"></div></div>
+      </div>
+      <div class="cup-temp-label" id="temp-black" style="color:var(--warm)">30°C</div>
+      <div class="cup-name">黑色</div>
+    </div>
+    <div class="color-cup" onclick="sunExperiment()">
+      <div class="cup-body" id="cup-red" style="background:#8b0000;">
+        <div class="cup-fill" id="fill-red"></div>
+        <div class="cup-thermometer"><div class="therm-fill" id="therm-red" style="height:45%"></div></div>
+      </div>
+      <div class="cup-temp-label" id="temp-red" style="color:var(--warm)">30°C</div>
+      <div class="cup-name">深紅色</div>
+    </div>
+    <div class="color-cup" onclick="sunExperiment()">
+      <div class="cup-body" id="cup-blue" style="background:#1565c0;">
+        <div class="cup-fill" id="fill-blue"></div>
+        <div class="cup-thermometer"><div class="therm-fill" id="therm-blue" style="height:40%"></div></div>
+      </div>
+      <div class="cup-temp-label" id="temp-blue" style="color:var(--warm)">30°C</div>
+      <div class="cup-name">深藍色</div>
+    </div>
+    <div class="color-cup" onclick="sunExperiment()">
+      <div class="cup-body" id="cup-silver" style="background:linear-gradient(135deg,#c0c0c0,#888);">
+        <div class="cup-fill" id="fill-silver"></div>
+        <div class="cup-thermometer"><div class="therm-fill" id="therm-silver" style="height:32%"></div></div>
+      </div>
+      <div class="cup-temp-label" id="temp-silver" style="color:var(--cool)">30°C</div>
+      <div class="cup-name">銀色</div>
+    </div>
+    <div class="color-cup" onclick="sunExperiment()">
+      <div class="cup-body" id="cup-white" style="background:#e8e8e8;border-color:rgba(255,255,255,.4);">
+        <div class="cup-fill" id="fill-white" style="background:linear-gradient(180deg,#ddd,#aaa)"></div>
+        <div class="cup-thermometer"><div class="therm-fill" id="therm-white" style="height:25%"></div></div>
+      </div>
+      <div class="cup-temp-label" id="temp-white" style="color:var(--cool)">30°C</div>
+      <div class="cup-name">白色</div>
+    </div>
+  </div>
+  <div style="text-align:center;margin-top:1rem;">
+    <button class="score-btn" onclick="sunExperiment()" style="max-width:300px;font-size:1rem;padding:14px;">
+      ☀️ 日曬實驗！
+    </button>
+  </div>
+  <div id="color-msg" style="text-align:center;color:#ffd700;font-weight:700;margin-top:1.2rem;font-size:1.1rem;min-height:1.5rem;"></div>
+</section>
+
+<!-- ═══════════════════════════════ 表面積 ═══════════════════════════════════ -->
+<section id="surface">
+  <div class="section-title"><span>📐</span> 表面積與散熱效率</div>
+  <div class="divider"></div>
+  <p class="section-desc">散熱器上有很多鰭片，就是為了增加表面積，加速散熱。點擊方塊比較散熱速度！</p>
+
+  <div class="surface-demo">
+    <div class="surface-item" onclick="coolDown(0)">
+      <div class="surface-block" id="sb0" style="width:100px;height:100px;">整塊</div>
+      <div class="cool-rate" id="cr0">散熱速度：慢</div>
+      <p>表面積小</p>
+    </div>
+    <div class="surface-item" onclick="coolDown(1)">
+      <div style="display:flex;gap:4px;margin:0 auto 12px;width:104px;">
+        <div class="surface-block" id="sb1a" style="width:48px;height:100px;font-size:.7rem">½</div>
+        <div class="surface-block" id="sb1b" style="width:48px;height:100px;font-size:.7rem">½</div>
+      </div>
+      <div class="cool-rate" id="cr1">散熱速度：中</div>
+      <p>表面積 ×1.5</p>
+    </div>
+    <div class="surface-item" onclick="coolDown(2)">
+      <div style="display:flex;gap:3px;margin:0 auto 12px;width:104px;">
+        <div class="surface-block" id="sb2a" style="width:22px;height:100px;font-size:.55rem">¼</div>
+        <div class="surface-block" id="sb2b" style="width:22px;height:100px;font-size:.55rem">¼</div>
+        <div class="surface-block" id="sb2c" style="width:22px;height:100px;font-size:.55rem">¼</div>
+        <div class="surface-block" id="sb2d" style="width:22px;height:100px;font-size:.55rem">¼</div>
+      </div>
+      <div class="cool-rate" id="cr2">散熱速度：快</div>
+      <p>表面積 ×2.2</p>
+    </div>
+    <div class="surface-item" onclick="coolDown(3)">
+      <div style="display:flex;gap:2px;margin:0 auto 12px;width:100px;flex-wrap:wrap;">
+        <div class="surface-block" id="sb3a" style="width:10px;height:100px;font-size:.4rem"></div>
+        <div class="surface-block" id="sb3b" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3c" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3d" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3e" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3f" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3g" style="width:10px;height:100px"></div>
+        <div class="surface-block" id="sb3h" style="width:10px;height:100px"></div>
+      </div>
+      <div class="cool-rate" id="cr3">散熱速度：最快</div>
+      <p>散熱鰭片設計</p>
+    </div>
+  </div>
+  <div id="surface-msg" style="text-align:center;color:var(--accent);font-weight:700;font-size:1.1rem;min-height:1.5rem;margin-top:1rem;"></div>
+</section>
+
+<!-- ═══════════════════════════════ QUIZ ════════════════════════════════════════ -->
+<div class="quiz-section" id="quiz">
+  <div class="quiz-title">🧪 保溫與散熱小測驗</div>
+  <div class="quiz-desc">共 10 題，包含是非題與選擇題。每答一題立即知道對錯！</div>
+
+  <!-- Q1 是非 -->
+  <div class="q-block" id="q1">
+    <div class="q-num">是非題 01</div>
+    <div class="q-text">熱對流只能發生在液體中，無法在氣體中發生。</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="checkTF(1,'O')">○ 對</button>
+      <button class="tf-btn" onclick="checkTF(1,'X')">✕ 錯</button>
+    </div>
+    <div class="q-feedback" id="fb1"></div>
+  </div>
+
+  <!-- Q2 是非 -->
+  <div class="q-block" id="q2">
+    <div class="q-num">是非題 02</div>
+    <div class="q-text">真空保溫瓶的夾層抽成真空，是為了阻止熱對流與熱傳導。</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="checkTF(2,'O')">○ 對</button>
+      <button class="tf-btn" onclick="checkTF(2,'X')">✕ 錯</button>
+    </div>
+    <div class="q-feedback" id="fb2"></div>
+  </div>
+
+  <!-- Q3 是非 -->
+  <div class="q-block" id="q3">
+    <div class="q-num">是非題 03</div>
+    <div class="q-text">黑色物體比白色物體更容易吸收輻射熱，也更容易散熱。</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="checkTF(3,'O')">○ 對</button>
+      <button class="tf-btn" onclick="checkTF(3,'X')">✕ 錯</button>
+    </div>
+    <div class="q-feedback" id="fb3"></div>
+  </div>
+
+  <!-- Q4 是非 -->
+  <div class="q-block" id="q4">
+    <div class="q-num">是非題 04</div>
+    <div class="q-text">太陽的熱能傳到地球，主要靠熱傳導方式，因為太陽與地球之間有空氣。</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="checkTF(4,'O')">○ 對</button>
+      <button class="tf-btn" onclick="checkTF(4,'X')">✕ 錯</button>
+    </div>
+    <div class="q-feedback" id="fb4"></div>
+  </div>
+
+  <!-- Q5 是非 -->
+  <div class="q-block" id="q5">
+    <div class="q-num">是非題 05</div>
+    <div class="q-text">冬天穿多層衣服比穿一件厚衣服保暖，是因為層與層之間的空氣是熱的不良導體。</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="checkTF(5,'O')">○ 對</button>
+      <button class="tf-btn" onclick="checkTF(5,'X')">✕ 錯</button>
+    </div>
+    <div class="q-feedback" id="fb5"></div>
+  </div>
+
+  <!-- Q6 選擇 -->
+  <div class="q-block" id="q6">
+    <div class="q-num">選擇題 06</div>
+    <div class="q-text">下列哪一種熱傳遞方式，不需要任何介質（物質）就能傳遞？</div>
+    <div class="mc-opts">
+      <button class="mc-btn" onclick="checkMC(6,'A')">① 熱傳導</button>
+      <button class="mc-btn" onclick="checkMC(6,'B')">② 熱對流</button>
+      <button class="mc-btn" onclick="checkMC(6,'C')">③ 熱輻射</button>
+      <button class="mc-btn" onclick="checkMC(6,'D')">④ 熱蒸發</button>
+    </div>
+    <div class="q-feedback" id="fb6"></div>
+  </div>
+
+  <!-- Q7 選擇 -->
+  <div class="q-block" id="q7">
+    <div class="q-num">選擇題 07</div>
+    <div class="q-text">散熱器（電腦CPU風扇）上設計有許多薄薄的鰭片，主要目的是什麼？</div>
+    <div class="mc-opts">
+      <button class="mc-btn" onclick="checkMC(7,'A')">① 減少重量</button>
+      <button class="mc-btn" onclick="checkMC(7,'B')">② 增加表面積加速散熱</button>
+      <button class="mc-btn" onclick="checkMC(7,'C')">③ 讓空氣無法流通</button>
+      <button class="mc-btn" onclick="checkMC(7,'D')">④ 吸收更多輻射</button>
+    </div>
+    <div class="q-feedback" id="fb7"></div>
+  </div>
+
+  <!-- Q8 選擇 -->
+  <div class="q-block" id="q8">
+    <div class="q-num">選擇題 08</div>
+    <div class="q-text">下列哪一種材料的導熱性最差，最適合用來保溫？</div>
+    <div class="mc-opts">
+      <button class="mc-btn" onclick="checkMC(8,'A')">① 鐵片</button>
+      <button class="mc-btn" onclick="checkMC(8,'B')">② 銅管</button>
+      <button class="mc-btn" onclick="checkMC(8,'C')">③ 羊毛（含空氣）</button>
+      <button class="mc-btn" onclick="checkMC(8,'D')">④ 鋁箔</button>
+    </div>
+    <div class="q-feedback" id="fb8"></div>
+  </div>
+
+  <!-- Q9 選擇 -->
+  <div class="q-block" id="q9">
+    <div class="q-num">選擇題 09</div>
+    <div class="q-text">夏天穿白色衣服會感覺比較涼，原因是什麼？</div>
+    <div class="mc-opts">
+      <button class="mc-btn" onclick="checkMC(9,'A')">① 白色衣服導熱速度較快</button>
+      <button class="mc-btn" onclick="checkMC(9,'B')">② 白色能反射較多太陽輻射，吸熱少</button>
+      <button class="mc-btn" onclick="checkMC(9,'C')">③ 白色衣服含有更多空氣</button>
+      <button class="mc-btn" onclick="checkMC(9,'D')">④ 白色衣服能阻擋對流</button>
+    </div>
+    <div class="q-feedback" id="fb9"></div>
+  </div>
+
+  <!-- Q10 選擇 -->
+  <div class="q-block" id="q10">
+    <div class="q-num">選擇題 10</div>
+    <div class="q-text">下列哪一個例子，利用的是「熱對流」原理？</div>
+    <div class="mc-opts">
+      <button class="mc-btn" onclick="checkMC(10,'A')">① 鐵鍋把熱傳給食物</button>
+      <button class="mc-btn" onclick="checkMC(10,'B')">② 太陽曬熱地面</button>
+      <button class="mc-btn" onclick="checkMC(10,'C')">③ 暖氣機使整個房間變暖</button>
+      <button class="mc-btn" onclick="checkMC(10,'D')">④ 用棉被蓋住保溫瓶</button>
+    </div>
+    <div class="q-feedback" id="fb10"></div>
+  </div>
+
+  <div class="score-result" id="scoreResult"></div>
+</div>
+
+<footer>如何保溫與散熱 互動 Dashboard · 國小自然科學習資源</footer>
+
+<!-- ═══════════════════════════════ SCRIPTS ════════════════════════════════════ -->
+<script>
+/* ─── CONDUCTION ─── */
+let condActive = false;
+function startConduction(){
+  if(condActive) return;
+  condActive = true;
+  const bar = document.getElementById('condBar');
+  const bar2= document.getElementById('condBar2');
+  const txt = document.getElementById('condText');
+  bar.classList.add('active');
+  bar2.style.width='20%';
+  txt.textContent = '熱能正在從熱端向冷端傳導中…';
+  bar2.style.transition='width 3s cubic-bezier(.4,0,.2,1)';
+  setTimeout(()=>{ bar2.style.width='92%'; },100);
+  setTimeout(()=>{ txt.textContent='✅ 熱傳導完成！整根棒子溫度趨於一致。'; condActive=false; },3500);
+}
+
+/* ─── CONVECTION ─── */
+let convStarted = false;
+function startConvection(){
+  if(convStarted) return; convStarted = true;
+  const box = document.getElementById('convBox');
+  const colors = ['rgba(255,120,0,.7)','rgba(255,80,0,.6)','rgba(255,160,30,.5)','rgba(200,80,0,.6)'];
+  for(let i=0;i<18;i++){
+    const b = document.createElement('div');
+    b.className='bubble';
+    const s=(8+Math.random()*16)+'px';
+    const dx=(Math.random()-.5)*60+'px';
+    const dx2=(Math.random()-.5)*80+'px';
+    const t=(1.5+Math.random()*2)+'s';
+    const d=(Math.random()*2)+'s';
+    b.style.cssText=`
+      --s:${s};--dx:${dx};--dx2:${dx2};--t:${t};--d:${d};
+      left:${20+Math.random()*60}%;
+      bottom:16px;
+      background:${colors[Math.floor(Math.random()*4)]};
+    `;
+    box.appendChild(b);
+  }
+}
+
+/* ─── RADIATION ─── */
+let radStarted = false;
+function startRadiation(){
+  if(radStarted) return; radStarted = true;
+  const scene = document.getElementById('radScene');
+  const sunEl = scene.querySelector('.sun');
+  const sunRect = sunEl.getBoundingClientRect();
+  const sceneRect = scene.getBoundingClientRect();
+  const sunCX = sunEl.offsetLeft + 35;
+  const sunCY = 100;
+  for(let i=0;i<12;i++){
+    const ray = document.createElement('div');
+    ray.className='ray';
+    const angle = (Math.random()-.5)*30;
+    const t=(0.8+Math.random()*.6)+'s';
+    const d=(i*.15)+'s';
+    ray.style.cssText=`
+      left:${sunCX+35}px;
+      top:${sunCY + (Math.random()-0.5)*20}px;
+      transform:rotate(${angle}deg);
+      --t:${t};--d:${d};
+      animation:rayShoot ${t} linear infinite ${d};
+    `;
+    scene.appendChild(ray);
+  }
+}
+
+/* ─── THERMOS ─── */
+let cupTimers = {};
+const cupData = {
+  1: { temp:85, rate:0.8,  el:'temp1', liq:'liquid1' },
+  2: { temp:85, rate:0.08, el:'temp2', liq:'liquid2' }
+};
+function toggleCup(n){
+  if(cupTimers[n]) return;
+  const msg = document.getElementById('thermos-msg');
+  cupTimers[n] = setInterval(()=>{
+    const d = cupData[n];
+    d.temp = Math.max(20, d.temp - d.rate);
+    const el = document.getElementById(d.el);
+    const t = Math.round(d.temp);
+    el.textContent = t + '°C';
+    el.style.color = t>60?'#ff6b35':t>40?'#ffa552':'#45b7d1';
+    if(d.temp<=20){ clearInterval(cupTimers[n]); }
+  },300);
+  if(n===1) msg.textContent='⚠️ 一般杯快速散熱中！';
+  if(n===2) msg.textContent='✅ 保溫瓶幾乎不散熱，溫度維持良好！';
+}
+
+/* ─── COLOR EXPERIMENT ─── */
+const colorData = [
+  { id:'black',  finalTemp:65, finalFill:'linear-gradient(180deg,#ff4500,#cc2200)', speed:3.5 },
+  { id:'red',    finalTemp:58, finalFill:'linear-gradient(180deg,#ff6020,#cc4400)', speed:3.0 },
+  { id:'blue',   finalTemp:50, finalFill:'linear-gradient(180deg,#ff8040,#cc5500)', speed:2.5 },
+  { id:'silver', finalTemp:38, finalFill:'linear-gradient(180deg,#ffaa60,#cc7700)', speed:1.5 },
+  { id:'white',  finalTemp:32, finalFill:'linear-gradient(180deg,#ffcc80,#cc9900)', speed:1.0 },
+];
+const thermHeights = [92, 82, 68, 45, 30];
+let sunDone = false;
+function sunExperiment(){
+  if(sunDone) return; sunDone = true;
+  const msg = document.getElementById('color-msg');
+  msg.textContent = '☀️ 日曬中…熱量開始傳遞！';
+  colorData.forEach((c,i)=>{
+    const fill = document.getElementById('fill-'+c.id);
+    const therm = document.getElementById('therm-'+c.id);
+    const tempEl = document.getElementById('temp-'+c.id);
+    fill.style.transition = `background ${c.speed}s ease`;
+    fill.style.background = c.finalFill;
+    therm.style.transition = `height ${c.speed}s ease`;
+    therm.style.height = thermHeights[i]+'%';
+    let start = 30, end = c.finalTemp;
+    const dur = c.speed*1000;
+    const startTime = Date.now();
+    const timer = setInterval(()=>{
+      const prog = Math.min(1,(Date.now()-startTime)/dur);
+      const cur = Math.round(start + (end-start)*prog);
+      tempEl.textContent = cur+'°C';
+      tempEl.style.color = cur>55?'#ff4500':cur>45?'#ff8c00':'#45b7d1';
+      if(prog>=1) clearInterval(timer);
+    },50);
+  });
+  setTimeout(()=>{
+    msg.textContent = '🏆 結果：黑色最熱，白色最涼！深色物體吸收熱輻射的能力較強。';
+  }, 4000);
+}
+
+/* ─── SURFACE AREA ─── */
+const sbIds = [
+  ['sb0'],
+  ['sb1a','sb1b'],
+  ['sb2a','sb2b','sb2c','sb2d'],
+  ['sb3a','sb3b','sb3c','sb3d','sb3e','sb3f','sb3g','sb3h'],
+];
+const coolRates = ['🌡️ 散熱速度：慢','🌡️ 散熱速度：中','🌡️ 散熱速度：快','🌡️ 散熱速度：最快！'];
+function coolDown(idx){
+  const colors = [
+    '#ff6b35','#ff8c42','#ffa552','#ffd700',
+    '#c8f744','#4ecdc4','#45b7d1','#00d4ff',
+  ];
+  sbIds[idx].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el) return;
+    let step=0;
+    const int=setInterval(()=>{
+      if(step>=colors.length){clearInterval(int);return;}
+      el.style.background=`linear-gradient(135deg,${colors[step]},${colors[Math.min(step+1,colors.length-1)]})`;
+      step++;
+    },400+idx*200);
+  });
+  document.getElementById('cr'+idx).textContent = coolRates[idx];
+  const msgs = [
+    '表面積小，熱量難以散出，冷卻很慢。',
+    '分成兩塊，散熱面積增加，速度稍快。',
+    '四塊散熱，表面積大幅增加，效率顯著提升！',
+    '鰭片設計讓表面積最大化，這就是電腦散熱器的秘密！',
+  ];
+  document.getElementById('surface-msg').textContent = msgs[idx];
+}
+
+/* ─── QUIZ ─── */
+const answers = {
+  tf: { 1:'X', 2:'O', 3:'O', 4:'X', 5:'O' },
+  mc: { 6:'C', 7:'B', 8:'C', 9:'B', 10:'C' }
+};
+const explanations = {
+  1: '熱對流在液體和氣體（統稱流體）中都會發生，例如暖氣機加熱空氣也是對流。',
+  2: '真空夾層中沒有物質，熱傳導和熱對流都需要介質，真空可同時阻止這兩種傳熱。',
+  3: '黑色（深色）物體吸收輻射熱多，也更容易輻射散熱，兩者都較強。',
+  4: '太陽到地球之間是真空，無法傳導或對流，熱能是靠熱輻射（電磁波）傳遞的。',
+  5: '空氣流動性差，是不良導體，多層衣物之間夾了許多靜止空氣，能有效阻隔熱散失。',
+  6: '熱輻射以電磁波形式傳播，可在真空中傳遞，不需要介質。',
+  7: '鰭片大幅增加散熱器的表面積，讓熱量能更快散發到周圍空氣中。',
+  8: '羊毛纖維間含有大量靜止空氣，空氣導熱性差，因此保溫效果最佳。',
+  9: '白色（淺色）能反射大部分太陽輻射，吸收的熱量少，所以感覺較涼。',
+  10: '暖氣機加熱空氣，熱空氣上升、冷空氣下降形成循環，是典型的對流現象。',
+};
+const answered = {};
+let score = 0;
+
+function checkTF(n, ans){
+  if(answered[n]) return;
+  answered[n]=true;
+  const correct = answers.tf[n]===ans;
+  if(correct) score+=2;
+  const fb=document.getElementById('fb'+n);
+  const block=document.getElementById('q'+n);
+  const btns=block.querySelectorAll('.tf-btn');
+  btns.forEach(b=>{
+    b.classList.add('disabled');
+    if((b.textContent.includes('○')&&answers.tf[n]==='O')||(b.textContent.includes('✕')&&answers.tf[n]==='X')){
+      b.classList.add('correct');
+    }
+    if((b.textContent.includes('○')&&ans==='O'&&!correct)||(b.textContent.includes('✕')&&ans==='X'&&!correct)){
+      b.classList.add('wrong');
+    }
+  });
+  fb.className='q-feedback '+(correct?'ok':'bad');
+  fb.textContent=(correct?'✅ 答對了！':'❌ 答錯了。')+' '+explanations[n];
+  block.classList.add(correct?'answered-correct':'answered-wrong');
+  checkAllAnswered();
+}
+
+function checkMC(n, ans){
+  if(answered[n]) return;
+  answered[n]=true;
+  const correct = answers.mc[n]===ans;
+  if(correct) score+=3;
+  const fb=document.getElementById('fb'+n);
+  const block=document.getElementById('q'+n);
+  const btns=block.querySelectorAll('.mc-btn');
+  const optMap=['A','B','C','D'];
+  btns.forEach((b,i)=>{
+    b.classList.add('disabled');
+    if(optMap[i]===answers.mc[n]) b.classList.add('correct');
+    else if(optMap[i]===ans && !correct) b.classList.add('wrong');
+  });
+  fb.className='q-feedback '+(correct?'ok':'bad');
+  fb.textContent=(correct?'✅ 答對了！':'❌ 答錯了。')+' '+explanations[n];
+  block.classList.add(correct?'answered-correct':'answered-wrong');
+  checkAllAnswered();
+}
+
+function checkAllAnswered(){
+  if(Object.keys(answered).length === 10) setTimeout(calcScore, 600);
+}
+
+function calcScore(){
+  const total=25; // 5×2 + 5×3
+  const pct=Math.round(score/total*100);
+  const res=document.getElementById('scoreResult');
+  let emoji,msg;
+  if(pct>=90){emoji='🏆';msg='太厲害了！你是散熱保溫小達人！';}
+  else if(pct>=70){emoji='🌟';msg='表現很好！再複習一下就能滿分！';}
+  else if(pct>=50){emoji='💪';msg='加油！再多看幾遍動畫，一定可以進步！';}
+  else{emoji='📚';msg='沒關係，多複習幾次，你一定可以的！';}
+  res.style.display='block';
+  res.innerHTML=`
+    <span class="score-emoji">${emoji}</span>
+    <div style="font-size:2.5rem;color:var(--yellow)">${score} / ${total} 分</div>
+    <div style="font-size:1.1rem;color:#8ab4c9;margin-top:.5rem">${pct}% 正確率</div>
+    <div style="color:var(--text);margin-top:.8rem;font-size:1.15rem">${msg}</div>
+    <button class="score-btn" onclick="retryQuiz()" style="margin-top:1.5rem;max-width:280px;font-size:1rem;padding:14px;background:linear-gradient(135deg,#00d4ff,#0099cc);color:#fff;">
+      🔄 重新測驗
+    </button>
+  `;
+  res.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function retryQuiz(){
+  for(let k in answered) delete answered[k];
+  score = 0;
+  document.getElementById('scoreResult').style.display='none';
+  document.getElementById('scoreResult').innerHTML='';
+  for(let n=1;n<=10;n++){
+    const block=document.getElementById('q'+n);
+    block.classList.remove('answered-correct','answered-wrong');
+    block.querySelectorAll('.tf-btn,.mc-btn').forEach(b=>{
+      b.classList.remove('correct','wrong','disabled');
+    });
+    document.getElementById('fb'+n).textContent='';
+    document.getElementById('fb'+n).className='q-feedback';
+  }
+  document.getElementById('quiz').scrollIntoView({behavior:'smooth'});
+}
+</script>
+</body>
+</html>
